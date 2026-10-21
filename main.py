@@ -1,3 +1,4 @@
+
 import streamlit as st
 
 st.set_page_config(
@@ -8,7 +9,7 @@ st.set_page_config(
 
 home_page = st.Page(
     "main_page.py",
-    title="main",
+    title="하늘 사진 업로드",
     icon="☁️",
     default=True
 )
@@ -19,8 +20,14 @@ result_page = st.Page(
     icon="🔎"
 )
 
+history_page = st.Page(
+    "pages/history.py",
+    title="구름 관측 기록표",
+    icon="📋"
+)
+
 pg = st.navigation(
-    [home_page, result_page],
+    [home_page, result_page, history_page],
     position="sidebar",
     expanded=True
 )
