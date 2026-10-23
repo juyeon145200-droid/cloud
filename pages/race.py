@@ -164,6 +164,16 @@ button:disabled { opacity: .45; cursor: not-allowed; }
     filter: drop-shadow(0 0 8px #ffb52e);
 }
 
+.runner.selected {
+    outline: 2px solid #267fe0;
+    outline-offset: 3px;
+    border-radius: 50%;
+}
+
+.runner.slowed {
+    filter: grayscale(0.8) drop-shadow(0 0 5px #7b8794);
+}
+
 .runner.shielded::after {
     content: "🛡️";
     position: absolute;
@@ -378,9 +388,10 @@ button:disabled { opacity: .45; cursor: not-allowed; }
             </select>
             <button class="primary" id="useItem" disabled>🚀 부스터 사용</button>
             <button class="secondary" id="shield" disabled>🛡️ 보호막 사용</button>
+            <button class="secondary" id="attack" disabled>🌪️ 방해 아이템 사용</button>
         </div>
         <p class="small" id="inventory" style="margin-bottom:0">
-            레이스 중 아이템이 무작위로 지급됩니다.
+            부스터·보호막은 선택한 물방울에 사용할 수 있고, 방해 아이템은 다른 물방울의 속도를 늦춰요. AI 물방울도 아이템을 자동으로 사용합니다.
         </p>
     </div>
 
@@ -439,6 +450,7 @@ let positions = [0, 0, 0, 0];
 let finished = [];
 let shields = [false, false, false, false];
 let boosts = [0, 0, 0, 0];
+let slowdowns = [0, 0, 0, 0];
 let running = false;
 let interval = null;
 let elapsed = 0;
@@ -447,6 +459,7 @@ let lastItem = 0;
 let selectedWeather = "sunny";
 let playerIndex = 0;
 let playerMoveCooldown = false;
+let lastPlayerAttack = -10;
 
 const $ = id => document.getElementById(id);
 
@@ -472,6 +485,7 @@ function render() {
         runner.classList.toggle("boost", boosts[i] > 0);
         runner.classList.toggle("selected", i === playerIndex);
         runner.classList.toggle("shielded", shields[i]);
+        runner.classList.toggle("slowed", slowdowns[i] > 0);
         $("meta" + i).textContent =
             positions[i] >= 100 ? "🏁 완주!" : Math.floor(positions[i]) + "%";
     });
@@ -492,7 +506,7 @@ function render() {
 
     $("clock").textContent = elapsed.toFixed(1) + "초";
     $("inventory").textContent =
-        "🚀 부스터: 선택한 물방울에 사용 · 🛡️ 보호막: 다음 방해 이벤트 1회 방어";
+        "🚀 부스터: 전진을 더 빠르게 · 🛡️ 보호막: 방해 1회 방어 · 🌪️ 방해: 다른 물방울의 속도를 잠시 늦춤";
 }
 
 function makeConfetti() {
@@ -517,6 +531,7 @@ function finishRace() {
     $("start").disabled = true;
     $("useItem").disabled = true;
     $("shield").disabled = true;
+    $("attack").disabled = true;
     $("status").textContent = "레이스 종료";
 
     const order = [0, 1, 2, 3].sort((a, b) => {
@@ -541,6 +556,23 @@ function finishRace() {
         showEvent("🏁 레이스 종료! 우승자는 " + racers[winner].name + "입니다. 내 물방울은 " + playerRank + "등이에요!");
     }
     makeConfetti();
+}
+
+function useAttack(attackerIndex, targetIndex, isPlayer = false) {
+    if (targetIndex === attackerIndex) return false;
+
+    if (shields[targetIndex]) {
+        shields[targetIndex] = false;
+        showEvent("🛡️ " + racers[targetIndex].name + "의 보호막이 방해 아이템을 막았어요!");
+        return true;
+    }
+
+    slowdowns[targetIndex] = Math.max(slowdowns[targetIndex], 8);
+    showEvent(
+        (isPlayer ? "🌪️ 내가 사용한 방해 아이템! " : "💥 AI 물방울의 방해 아이템! ") +
+        racers[attackerIndex].name + "이(가) " + racers[targetIndex].name + "의 속도를 늦췄어요!"
+    );
+    return true;
 }
 
 function tick() {
@@ -574,6 +606,12 @@ function tick() {
         if (selectedWeather === "rainy") speed *= 0.92;
         if (selectedWeather === "snowy") speed *= 0.82;
         if (selectedWeather === "stormy") speed *= 0.96;
+
+        // 방해 아이템에 맞으면 잠시 속도가 느려져요.
+        if (slowdowns[i] > 0) {
+            speed *= 0.45;
+            slowdowns[i]--;
+        }
 
         // 사용한 부스터
         if (boosts[i] > 0) {
@@ -618,16 +656,28 @@ function tick() {
         }
     }
 
-    // 레이스 중 아이템 지급
-    if (elapsed - lastItem > 3.5 && Math.random() < 0.45) {
+    // 아이템 상자가 주기적으로 등장해요. AI 물방울은 아이템을 자동으로 사용해요.
+    if (elapsed - lastItem > 3.0 && Math.random() < 0.55) {
         lastItem = elapsed;
-        const i = randomInt(0, 3);
-        if (Math.random() < 0.5) {
-            boosts[i] = Math.max(boosts[i], 5);
-            showEvent("🎁 " + racers[i].name + "에게 부스터 아이템이 지급됐어요!");
+        const holder = randomInt(0, 3);
+        const action = randomInt(0, 2); // 0: 부스터, 1: 보호막, 2: 방해
+
+        if (action === 0) {
+            boosts[holder] = Math.max(boosts[holder], 5);
+            showEvent("🎁 " + racers[holder].name + "이(가) 🚀 부스터를 얻었어요!");
+        } else if (action === 1) {
+            shields[holder] = true;
+            showEvent("🎁 " + racers[holder].name + "이(가) 🛡️ 보호막을 얻었어요!");
+        } else if (holder !== playerIndex) {
+            // AI가 방해 아이템을 얻으면 다른 물방울을 골라 자동 공격해요.
+            const targets = [0, 1, 2, 3].filter(j => j !== holder && positions[j] < 100);
+            if (targets.length > 0) {
+                const target = targets[randomInt(0, targets.length - 1)];
+                useAttack(holder, target, false);
+            }
         } else {
-            shields[i] = true;
-            showEvent("🎁 " + racers[i].name + "에게 보호막 아이템이 지급됐어요!");
+            // 플레이어가 방해 아이템을 얻으면 버튼으로 상대에게 사용할 수 있어요.
+            showEvent("🎁 방해 아이템 획득! 아래에서 상대 물방울을 선택하고 🌪️ 방해 아이템을 사용하세요!");
         }
     }
 
@@ -648,6 +698,11 @@ function movePlayer() {
     if (!running || positions[playerIndex] >= 100 || playerMoveCooldown) return;
     playerMoveCooldown = true;
     let playerStep = 3.2;
+    if (slowdowns[playerIndex] > 0) {
+        playerStep *= 0.45;
+        slowdowns[playerIndex]--;
+        showEvent("🌪️ 방해 아이템 효과로 내 물방울의 속도가 잠시 느려졌어요!");
+    }
     if (boosts[playerIndex] > 0) {
         playerStep += 2.5;
         boosts[playerIndex]--;
@@ -677,6 +732,7 @@ function startRace() {
     $("movePlayer").disabled = false;
     $("useItem").disabled = false;
     $("shield").disabled = false;
+    $("attack").disabled = false;
     $("status").textContent = "레이스 진행 중";
     showEvent("🚦 출발! 물방울들이 달리기 시작했어요!");
 
@@ -690,10 +746,12 @@ function resetRace() {
     finished = [];
     shields = [false, false, false, false];
     boosts = [0, 0, 0, 0];
+    slowdowns = [0, 0, 0, 0];
     running = false;
     elapsed = 0;
     lastEvent = 0;
     lastItem = 0;
+    lastPlayerAttack = -10;
 
     $("winner").style.display = "none";
     $("start").disabled = false;
@@ -703,6 +761,7 @@ function resetRace() {
     playerMoveCooldown = false;
     $("useItem").disabled = true;
     $("shield").disabled = true;
+    $("attack").disabled = true;
     $("status").textContent = "출발 대기";
 
     updateWeather();
@@ -736,6 +795,29 @@ $("shield").addEventListener("click", () => {
     showEvent("🛡️ " + racers[i].name + "에게 보호막을 씌웠어요!");
 });
 
+$("attack").addEventListener("click", () => {
+    if (!running) return;
+
+    const targetIndex = Number($("target").value);
+    if (targetIndex === playerIndex) {
+        showEvent("⚠️ 내 물방울이 아닌 상대 물방울을 선택해 주세요!");
+        return;
+    }
+
+    if (elapsed - lastPlayerAttack < 2.5) {
+        showEvent("⏳ 방해 아이템은 2.5초마다 한 번 사용할 수 있어요!");
+        return;
+    }
+
+    if (positions[targetIndex] >= 100) {
+        showEvent("🏁 이미 완주한 물방울에게는 사용할 수 없어요!");
+        return;
+    }
+
+    lastPlayerAttack = elapsed;
+    useAttack(playerIndex, targetIndex, true);
+});
+
 updateWeather();
 updatePlayerChoice();
 render();
@@ -744,4 +826,4 @@ render();
 </html>
 """
 
-components.html(game_html, height=1150, scrolling=True)
+components.html(game_html, height=1250, scrolling=True)
