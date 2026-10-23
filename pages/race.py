@@ -311,6 +311,12 @@ button:disabled { opacity: .45; cursor: not-allowed; }
 
     <div class="panel">
         <div class="controls">
+            <select id="playerChoice" aria-label="내가 조종할 물방울 선택">
+                <option value="0">💧 번개 물방울로 플레이</option>
+                <option value="1">🩵 무지개 물방울로 플레이</option>
+                <option value="2">💦 얼음 물방울로 플레이</option>
+                <option value="3">🌧️ 구름 물방울로 플레이</option>
+            </select>
             <select id="weather" aria-label="날씨 선택">
                 <option value="sunny">☀️ 맑은 날</option>
                 <option value="rainy">🌧️ 비 오는 날</option>
@@ -319,6 +325,7 @@ button:disabled { opacity: .45; cursor: not-allowed; }
             </select>
 
             <button class="primary" id="start">🏁 레이스 시작!</button>
+            <button class="primary" id="movePlayer" disabled>⬆️ 내 물방울 전진! (스페이스바)</button>
             <button class="secondary" id="restart">🔄 다시 하기</button>
         </div>
         <div class="weather-note" id="weatherNote">
@@ -356,7 +363,7 @@ button:disabled { opacity: .45; cursor: not-allowed; }
         </div>
 
         <div class="event" id="event" style="margin-top:12px">
-            🌤️ 준비 완료! 날씨를 선택하고 레이스를 시작하세요.
+            🌤️ 준비 완료! 물방울을 선택한 뒤 레이스를 시작하세요. 내 물방울은 전진 버튼 또는 스페이스바로 조종해요!
         </div>
     </div>
 
@@ -438,6 +445,8 @@ let elapsed = 0;
 let lastEvent = 0;
 let lastItem = 0;
 let selectedWeather = "sunny";
+let playerIndex = 0;
+let playerMoveCooldown = false;
 
 const $ = id => document.getElementById(id);
 
@@ -461,6 +470,7 @@ function render() {
         const runner = $("runner" + i);
         runner.style.left = Math.min(96, positions[i]) + "%";
         runner.classList.toggle("boost", boosts[i] > 0);
+        runner.classList.toggle("selected", i === playerIndex);
         runner.classList.toggle("shielded", shields[i]);
         $("meta" + i).textContent =
             positions[i] >= 100 ? "🏁 완주!" : Math.floor(positions[i]) + "%";
@@ -519,11 +529,17 @@ function finishRace() {
     });
 
     const winner = order[0];
+    const playerRank = order.indexOf(playerIndex) + 1;
     $("winner").style.display = "block";
-    $("winnerText").textContent = racers[winner].emoji + " " + racers[winner].name + " 우승!";
-    $("winnerDetail").textContent =
-        "총 " + elapsed.toFixed(1) + "초 · 1등부터 4등까지 순위가 결정됐어요!";
-    showEvent("🏁 레이스 종료! 우승자는 " + racers[winner].name + "입니다!");
+    if (winner === playerIndex) {
+        $("winnerText").textContent = "🏆 성공! " + racers[playerIndex].name + " 우승!";
+        $("winnerDetail").textContent = "네가 조종한 물방울이 1등으로 도착했어요! 총 " + elapsed.toFixed(1) + "초";
+        showEvent("🎉 축하해요! 내가 조종한 " + racers[playerIndex].name + "이(가) 우승했어요!");
+    } else {
+        $("winnerText").textContent = racers[winner].emoji + " " + racers[winner].name + " 우승!";
+        $("winnerDetail").textContent = "내 물방울은 " + playerRank + "등이에요. 다시 도전해 보세요! 총 " + elapsed.toFixed(1) + "초";
+        showEvent("🏁 레이스 종료! 우승자는 " + racers[winner].name + "입니다. 내 물방울은 " + playerRank + "등이에요!");
+    }
     makeConfetti();
 }
 
@@ -532,6 +548,9 @@ function tick() {
 
     for (let i = 0; i < 4; i++) {
         if (positions[i] >= 100) continue;
+
+        // 내가 선택한 물방울은 직접 조종하고, 나머지 3마리만 AI가 달려요.
+        if (i === playerIndex) continue;
 
         let speed = 1.0 + Math.random() * 1.2;
 
@@ -617,6 +636,35 @@ function tick() {
     if (finished.length === 4) finishRace();
 }
 
+function updatePlayerChoice() {
+    if (running) return;
+    playerIndex = Number($("playerChoice").value);
+    $("target").value = String(playerIndex);
+    render();
+    showEvent("🎮 " + racers[playerIndex].name + "을(를) 선택했어요! 레이스를 시작하고 전진 버튼 또는 스페이스바를 눌러 보세요.");
+}
+
+function movePlayer() {
+    if (!running || positions[playerIndex] >= 100 || playerMoveCooldown) return;
+    playerMoveCooldown = true;
+    let playerStep = 3.2;
+    if (boosts[playerIndex] > 0) {
+        playerStep += 2.5;
+        boosts[playerIndex]--;
+        showEvent("🚀 부스터 효과! " + racers[playerIndex].name + "이(가) 더 멀리 전진했어요!");
+    }
+    positions[playerIndex] = Math.min(100, positions[playerIndex] + playerStep);
+    if (positions[playerIndex] >= 100 && !finished.includes(playerIndex)) {
+        finished.push(playerIndex);
+        showEvent("🏁 내가 조종한 " + racers[playerIndex].name + " 완주!");
+    } else {
+        showEvent("⬆️ " + racers[playerIndex].name + " 전진! 계속 눌러 결승선까지 달려요!");
+    }
+    render();
+    if (finished.length === 4) finishRace();
+    setTimeout(() => { playerMoveCooldown = false; }, 180);
+}
+
 function startRace() {
     if (running) return;
 
@@ -625,6 +673,8 @@ function startRace() {
     running = true;
     $("start").disabled = true;
     $("weather").disabled = true;
+    $("playerChoice").disabled = true;
+    $("movePlayer").disabled = false;
     $("useItem").disabled = false;
     $("shield").disabled = false;
     $("status").textContent = "레이스 진행 중";
@@ -648,6 +698,9 @@ function resetRace() {
     $("winner").style.display = "none";
     $("start").disabled = false;
     $("weather").disabled = false;
+    $("playerChoice").disabled = false;
+    $("movePlayer").disabled = true;
+    playerMoveCooldown = false;
     $("useItem").disabled = true;
     $("shield").disabled = true;
     $("status").textContent = "출발 대기";
@@ -657,6 +710,14 @@ function resetRace() {
 }
 
 $("weather").addEventListener("change", updateWeather);
+$("playerChoice").addEventListener("change", updatePlayerChoice);
+$("movePlayer").addEventListener("click", movePlayer);
+document.addEventListener("keydown", (event) => {
+    if (event.code === "Space") {
+        event.preventDefault();
+        movePlayer();
+    }
+});
 $("start").addEventListener("click", startRace);
 $("restart").addEventListener("click", resetRace);
 $("playAgain").addEventListener("click", resetRace);
@@ -676,6 +737,7 @@ $("shield").addEventListener("click", () => {
 });
 
 updateWeather();
+updatePlayerChoice();
 render();
 </script>
 </body>
