@@ -41,7 +41,7 @@ if st.button("🔍 구름 분석 시작", type="primary"):
 
         prompt = """
         너는 기상 관측을 돕는 AI야.
-        제공된 하늘 사진을 보고 구름을 분석해 줘.
+        제공된 하늘 사진을 보고 사진 속 구름을 분석해 줘.
 
         다음 항목을 포함해 한국어 JSON으로 답해.
         다른 설명이나 마크다운 없이 JSON만 출력해.
@@ -51,13 +51,30 @@ if st.button("🔍 구름 분석 시작", type="primary"):
           "english_name": "영어 이름",
           "confidence": 70,
           "features": "구름의 모양과 특징",
+          "formation_cause": "구름이 생성되는 원인과 형성 과정",
+          "altitude": "주로 나타나는 고도와 대략적인 고도 범위",
           "weather": "관련될 수 있는 날씨 특징",
           "explanation": "이 구름이라고 판단한 이유"
         }
 
+        작성 시 다음 사항을 지켜.
+
+        1. 생성 원인은 공기의 상승, 냉각, 수증기 응결,
+           대기 상태 등 해당 구름의 일반적인 형성 과정에 맞게 설명해.
+        2. 고도는 구름의 종류에 맞춰 낮은 구름, 중간 구름,
+           높은 구름 또는 수직 발달 구름 등으로 설명해.
+        3. 고도 범위는 일반적으로 알려진 대략적인 범위를 사용해.
+           지역과 기상 조건에 따라 달라질 수 있음을 고려해.
+        4. 구름의 밑면 높이와 구름이 수직으로 발달하는 높이를
+           혼동하지 마.
+        5. 사진만으로 구름 종류를 확실히 판단하기 어렵다면
+           불확실성을 설명해.
+        6. 날씨는 구름만으로 확정할 수 없으므로 가능성으로 설명해.
+        7. 사진만으로 확인할 수 없는 대기 상태를 실제로 관측한
+           것처럼 단정하지 말고, 일반적인 형성 원리로 설명해.
+
         confidence는 분석 신뢰도를 나타내는 0~100 사이의 정수야.
         사진만으로 확실하게 판단하기 어려우면 낮은 값으로 표시해.
-        날씨는 구름만으로 확정할 수 없으므로 가능성으로 설명해.
         """
 
         response = client.models.generate_content(
@@ -78,6 +95,10 @@ if st.button("🔍 구름 분석 시작", type="primary"):
 
         result = json.loads(match.group())
 
+        # 새 항목이 누락된 경우를 위한 기본값
+        result.setdefault("formation_cause", "정보 없음")
+        result.setdefault("altitude", "정보 없음")
+
         # 분석 결과를 세션에 저장
         st.session_state["cloud_analysis_result"] = result
 
@@ -88,6 +109,8 @@ if st.button("🔍 구름 분석 시작", type="primary"):
             "영어 이름": str(result.get("english_name", "")),
             "신뢰도(%)": result.get("confidence", 0),
             "구름 특징": str(result.get("features", "")),
+            "생성 원인": str(result.get("formation_cause", "정보 없음")),
+            "주요 고도": str(result.get("altitude", "정보 없음")),
             "관련 날씨": str(result.get("weather", "")),
             "판단 이유": str(result.get("explanation", ""))
         }
@@ -142,6 +165,19 @@ if result:
 
     st.subheader("🔎 구름의 특징")
     st.write(result.get("features", "정보 없음"))
+
+    # 추가 기능 1: 구름 생성 원인
+    st.subheader("🌱 구름의 생성 원인")
+    st.write(result.get("formation_cause", "정보 없음"))
+
+    # 추가 기능 2: 주로 나타나는 고도
+    st.subheader("📏 주로 나타나는 고도")
+    st.write(result.get("altitude", "정보 없음"))
+
+    st.info(
+        "구름의 고도는 종류와 대기 조건에 따라 달라질 수 있어요. "
+        "특히 수직으로 발달하는 구름은 여러 고도에 걸쳐 나타날 수 있어요."
+    )
 
     st.subheader("🌦️ 관련 날씨")
     st.write(result.get("weather", "정보 없음"))
