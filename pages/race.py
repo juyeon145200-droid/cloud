@@ -515,26 +515,26 @@ function tick() {
         }
 
         // AI의 기본 속도를 이전보다 낮춤
-        let speed = 1.4 + Math.random() * 0.9;
+        let speed = 1.1 + Math.random() * 0.7;
 
         // 캐릭터별 순간 가속: 빈도와 세기를 완화
-        if (i === 0 && Math.random() < 0.15) {
-            speed += 1.8;
+        if (i === 0 && Math.random() < 0.12) {
+            speed += 1.2;
             showEvent("⚡ 번개 물방울이 순간 가속합니다!");
         }
 
-        if (i === 1 && Math.random() < 0.14) {
-            speed += 1.6;
+        if (i === 1 && Math.random() < 0.11) {
+            speed += 1.1;
             showEvent("🌈 무지개 물방울이 보너스 길을 발견했어요!");
         }
 
-        if (i === 2 && Math.random() < 0.10) {
-            speed += 1.4;
+        if (i === 2 && Math.random() < 0.08) {
+            speed += 1.0;
             showEvent("❄️ 얼음 물방울이 치고 나갑니다!");
         }
 
-        if (i === 3 && Math.random() < 0.15) {
-            speed += 1.7;
+        if (i === 3 && Math.random() < 0.12) {
+            speed += 1.1;
             showEvent("☁️ 구름 물방울에게 행운의 바람이 불어요!");
         }
 
