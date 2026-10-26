@@ -4,8 +4,8 @@ import streamlit.components.v1 as components
 
 st.title("💧 구름 탐험대: 물방울 레이스")
 st.write(
-    "물방울 하나를 직접 조종해 AI 물방울 3마리와 경주하세요. "
-    "아이템 없이 순수한 실력으로 우승에 도전해요!"
+    "물방울 하나를 직접 조종해 AI 물방울 3마리와 경주하세요! "
+    "아이템 없이 실력으로 우승에 도전해요."
 )
 
 game_html = r"""
@@ -321,10 +321,10 @@ button:disabled { opacity: .45; cursor: not-allowed; }
     <div class="panel">
         <h3>🎮 조작 방법</h3>
         <p>1. 내가 조종할 물방울과 날씨를 선택하세요.</p>
-        <p>2. 레이스 시작 후 전진 버튼을 빠르게 누르세요.</p>
+        <p>2. 레이스 시작 후 전진 버튼을 반복해서 누르세요.</p>
         <p>3. 또는 스페이스바를 눌러 물방울을 움직이세요.</p>
         <p class="small">
-            난이도: 어려움 · AI 물방울은 빠르게 달리며 순간 가속합니다.
+            난이도: 보통보다 약간 어려움 · AI 물방울은 가끔 순간 가속합니다.
             스페이스바가 반응하지 않으면 게임 화면을 클릭한 뒤 눌러 보세요.
         </p>
     </div>
@@ -363,19 +363,19 @@ const racers = [
 
 const weatherInfo = {
     sunny: {
-        note:"☀️ 맑은 날: AI 물방울이 빠르게 달려요.",
+        note:"☀️ 맑은 날: 밝은 트랙에서 달려요.",
         event:"☀️ 햇살이 비칩니다! 준비하세요!"
     },
     rainy: {
-        note:"🌧️ 비 오는 날: 미끄러운 트랙에서 속도가 줄어요.",
+        note:"🌧️ 비 오는 날: 미끄러운 트랙에서 속도가 조금 줄어요.",
         event:"🌧️ 빗방울이 떨어집니다!"
     },
     snowy: {
-        note:"❄️ 눈 오는 날: 눈길 때문에 속도가 불규칙해요.",
+        note:"❄️ 눈 오는 날: 눈길 때문에 속도가 조금 줄어요.",
         event:"❄️ 눈이 내립니다!"
     },
     stormy: {
-        note:"⛈️ 번개 치는 날: 강한 돌풍이 발생해요.",
+        note:"⛈️ 번개 치는 날: 가끔 강한 돌풍이 발생해요.",
         event:"⛈️ 천둥 번개가 칩니다!"
     }
 };
@@ -447,13 +447,10 @@ function makeConfetti() {
     for (let i = 0; i < 35; i++) {
         const item = document.createElement("div");
         item.className = "confetti";
-        item.textContent =
-            pieces[randomInt(0, pieces.length - 1)];
-
+        item.textContent = pieces[randomInt(0, pieces.length - 1)];
         item.style.left = randomInt(0, 100) + "vw";
         item.style.fontSize = randomInt(16, 27) + "px";
-        item.style.animationDelay =
-            (Math.random() * 0.8) + "s";
+        item.style.animationDelay = (Math.random() * 0.8) + "s";
 
         document.body.appendChild(item);
         setTimeout(() => item.remove(), 3500);
@@ -512,51 +509,43 @@ function tick() {
     elapsed += 0.2;
 
     for (let i = 0; i < 4; i++) {
-        // 내가 조종하는 물방울은 자동 이동하지 않아요.
+        // 내가 조종하는 물방울은 자동으로 움직이지 않아요.
         if (i === playerIndex || positions[i] >= 100) {
             continue;
         }
 
-        // AI 물방울의 기본 속도: 어려운 난이도
-        let speed = 1.75 + Math.random() * 1.15;
+        // AI의 기본 속도를 이전보다 낮춤
+        let speed = 1.4 + Math.random() * 0.9;
 
-        // 캐릭터별 순간 가속
-        if (i === 0 && Math.random() < 0.20) {
-            speed += 2.5;
+        // 캐릭터별 순간 가속: 빈도와 세기를 완화
+        if (i === 0 && Math.random() < 0.15) {
+            speed += 1.8;
             showEvent("⚡ 번개 물방울이 순간 가속합니다!");
         }
 
-        if (i === 1 && Math.random() < 0.18) {
-            speed += 2.2;
+        if (i === 1 && Math.random() < 0.14) {
+            speed += 1.6;
             showEvent("🌈 무지개 물방울이 보너스 길을 발견했어요!");
         }
 
-        if (i === 2 && Math.random() < 0.13) {
-            speed += 1.8;
+        if (i === 2 && Math.random() < 0.10) {
+            speed += 1.4;
             showEvent("❄️ 얼음 물방울이 치고 나갑니다!");
         }
 
-        if (i === 3 && Math.random() < 0.20) {
-            speed += 2.3;
+        if (i === 3 && Math.random() < 0.15) {
+            speed += 1.7;
             showEvent("☁️ 구름 물방울에게 행운의 바람이 불어요!");
         }
 
         // 날씨에 따른 속도 변화
-        if (selectedWeather === "rainy") speed *= 0.91;
-        if (selectedWeather === "snowy") speed *= 0.82;
+        if (selectedWeather === "rainy") speed *= 0.93;
+        if (selectedWeather === "snowy") speed *= 0.86;
+        if (selectedWeather === "stormy") speed *= 0.96;
 
-        if (selectedWeather === "stormy") {
-            speed *= 0.95;
-
-            if (Math.random() < 0.09) {
-                speed += 2.8;
-                showEvent("⚡ 돌풍 발생! AI 물방울이 가속했어요!");
-            }
-        }
-
-        // 가끔 발생하는 돌발 상황
-        if (Math.random() < 0.025) {
-            speed = Math.max(0.6, speed - 1.2);
+        // 가끔 발생하는 작은 돌발 상황
+        if (Math.random() < 0.02) {
+            speed = Math.max(0.6, speed - 0.8);
             showEvent("🌧️ 갑작스러운 바람으로 속도가 줄었어요!");
         }
 
@@ -598,12 +587,12 @@ function movePlayer() {
 
     playerMoveCooldown = true;
 
-    // 버튼을 반복해서 눌러야 앞으로 이동해요.
-    let step = 2.55;
+    // 직접 조종하는 물방울은 이전보다 조금 더 이동
+    let step = 2.8;
 
     if (selectedWeather === "rainy") step *= 0.93;
-    if (selectedWeather === "snowy") step *= 0.82;
-    if (selectedWeather === "stormy") step *= 0.92;
+    if (selectedWeather === "snowy") step *= 0.86;
+    if (selectedWeather === "stormy") step *= 0.96;
 
     positions[playerIndex] = Math.min(
         100, positions[playerIndex] + step
@@ -616,7 +605,7 @@ function movePlayer() {
     } else {
         showEvent(
             "⬆️ " + racers[playerIndex].name +
-            " 전진! 멈추지 말고 계속 눌러요!"
+            " 전진! 계속 눌러 보세요!"
         );
     }
 
@@ -646,8 +635,7 @@ function startRace() {
     $("status").textContent = "레이스 진행 중";
 
     showEvent(
-        "🚦 출발! AI 물방울이 빠르게 달려요. " +
-        "전진 버튼이나 스페이스바를 연속으로 눌러 보세요!"
+        "🚦 출발! 버튼이나 스페이스바를 반복해서 눌러 달리세요!"
     );
 
     interval = setInterval(tick, 200);
@@ -681,7 +669,7 @@ $("start").addEventListener("click", startRace);
 $("restart").addEventListener("click", resetRace);
 $("playAgain").addEventListener("click", resetRace);
 
-// 스페이스바로 물방울 조종
+// 스페이스바로 직접 조종
 document.addEventListener("keydown", event => {
     if (event.code === "Space" && !event.repeat) {
         event.preventDefault();
