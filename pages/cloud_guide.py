@@ -1,17 +1,12 @@
 
 import streamlit as st
 from datetime import date
-from io import BytesIO
-from PIL import Image
 
-
-# -----------------------------
-# 페이지 설정
-# -----------------------------
 st.title("☁️ 나만의 구름 도감")
+
 st.write(
-    "직접 관찰하거나 촬영한 하늘 사진을 등록하고 "
-    "나만의 구름 도감을 만들어 보세요!"
+    "구름 분석 결과 페이지에서 자동으로 저장된 "
+    "사진과 분석 결과를 모아 볼 수 있어요!"
 )
 
 st.info(
@@ -19,102 +14,14 @@ st.info(
     "새로고침하거나 세션이 초기화되면 사라질 수 있습니다."
 )
 
-
 # -----------------------------
 # 세션에 도감 목록 만들기
 # -----------------------------
 if "cloud_guide_entries" not in st.session_state:
     st.session_state["cloud_guide_entries"] = []
 
-
 # -----------------------------
-# 사진과 구름 정보 등록
-# -----------------------------
-st.subheader("📸 새 구름 등록")
-
-with st.form("cloud_guide_form", clear_on_submit=True):
-    uploaded_photo = st.file_uploader(
-        "하늘 사진을 업로드하세요.",
-        type=["jpg", "jpeg", "png"]
-    )
-
-    cloud_name = st.selectbox(
-        "구름 종류를 선택하세요.",
-        [
-            "적운",
-            "층운",
-            "권운",
-            "층적운",
-            "고적운",
-            "고층운",
-            "난층운",
-            "권층운",
-            "권적운",
-            "적란운",
-            "잘 모르겠음"
-        ]
-    )
-
-    observed_date = st.date_input(
-        "관측 날짜",
-        value=date.today()
-    )
-
-    weather_feature = st.text_area(
-        "구름의 특징과 관찰한 날씨를 적어 주세요.",
-        placeholder="예: 솜사탕처럼 뭉게뭉게 보였고 하늘이 맑았다."
-    )
-
-    submitted = st.form_submit_button(
-        "☁️ 도감에 등록하기",
-        use_container_width=True
-    )
-
-
-# -----------------------------
-# 등록 버튼을 눌렀을 때
-# -----------------------------
-if submitted:
-    if uploaded_photo is None:
-        st.warning("먼저 하늘 사진을 업로드해 주세요.")
-
-    elif not weather_feature.strip():
-        st.warning("구름의 특징을 한 문장 이상 적어 주세요.")
-
-    else:
-        try:
-            # 사진 파일을 세션에 보관할 수 있는 바이트로 변환
-            photo_bytes = uploaded_photo.getvalue()
-
-            # 이미지 파일인지 확인
-            Image.open(BytesIO(photo_bytes)).verify()
-
-            # 도감에 등록할 정보 만들기
-            new_entry = {
-                "name": cloud_name,
-                "date": observed_date.strftime("%Y-%m-%d"),
-                "feature": weather_feature.strip(),
-                "image": photo_bytes,
-                "filename": uploaded_photo.name
-            }
-
-            # 세션의 도감 목록에 추가
-            st.session_state["cloud_guide_entries"].append(new_entry)
-
-            st.success("도감에 구름 사진과 정보가 등록되었습니다!")
-
-        except Exception:
-            st.error(
-                "사진을 읽을 수 없습니다. "
-                "다른 JPG 또는 PNG 사진을 선택해 주세요."
-            )
-
-
-st.divider()
-
-
-# -----------------------------
-# 등록된 구름 도감 보여 주기
+# 자동 저장된 구름 도감 보여 주기
 # -----------------------------
 entries = st.session_state["cloud_guide_entries"]
 
@@ -123,8 +30,8 @@ st.write(f"현재 등록된 구름: **{len(entries)}개**")
 
 if not entries:
     st.info(
-        "아직 등록된 구름이 없어요. "
-        "위에서 사진을 업로드하고 첫 번째 구름을 등록해 보세요!"
+        "아직 저장된 구름이 없어요. "
+        "'구름 분석 결과' 페이지에서 사진을 분석해 주세요."
     )
 
 else:
@@ -137,13 +44,16 @@ else:
     # 검색어에 맞는 구름만 표시
     filtered_entries = [
         entry for entry in entries
-        if search_name.strip() in entry["name"]
+        if search_name.strip() in entry.get("name", "")
     ]
 
     if not filtered_entries:
         st.warning("검색어와 일치하는 구름이 없습니다.")
 
     else:
+        # 최신 기록부터 표시
+        filtered_entries = list(reversed(filtered_entries))
+
         # 두 개씩 카드 형태로 배치
         for start in range(0, len(filtered_entries), 2):
             cols = st.columns(2)
@@ -158,20 +68,66 @@ else:
 
                 with col:
                     with st.container(border=True):
-                        st.image(
-                            entry["image"],
-                            use_container_width=True
-                        )
+                        # 자동 저장된 사진 표시
+                        photo = entry.get("image")
 
-                        st.subheader(entry["name"])
-                        st.caption(f"📅 관측 날짜: {entry['date']}")
-                        st.write("**관찰한 특징**")
-                        st.write(entry["feature"])
+                        if photo:
+                            st.image(
+                                photo,
+                                use_container_width=True
+                            )
+                        else:
+                            st.info("저장된 사진이 없습니다.")
+
+                        st.subheader(entry.get("name", "구름 종류 미확인"))
 
                         st.caption(
-                            f"📁 원본 파일명: {entry['filename']}"
+                            f"📅 관측 날짜: "
+                            f"{entry.get('date', '날짜 정보 없음')}"
                         )
 
+                        # 자동 분석 결과 추가 표시
+                        if entry.get("english_name"):
+                            st.write(
+                                f"**영어 이름:** {entry['english_name']}"
+                            )
+
+                        if entry.get("confidence") is not None:
+                            st.write(
+                                f"**분석 신뢰도:** "
+                                f"{entry['confidence']}%"
+                            )
+
+                        st.write("**구름의 특징**")
+                        st.write(
+                            entry.get("feature", "정보 없음")
+                        )
+
+                        if entry.get("formation_cause"):
+                            st.write("**생성 원인**")
+                            st.write(entry["formation_cause"])
+
+                        if entry.get("altitude"):
+                            st.write("**주로 나타나는 고도**")
+                            st.write(entry["altitude"])
+
+                        if entry.get("weather"):
+                            st.write("**관련 날씨**")
+                            st.write(entry["weather"])
+
+                        if entry.get("explanation"):
+                            with st.expander("💡 AI가 판단한 이유"):
+                                st.write(entry["explanation"])
+
+                        if entry.get("filename"):
+                            st.caption(
+                                f"📁 원본 파일명: {entry['filename']}"
+                            )
+
+                        if entry.get("analysis_time"):
+                            st.caption(
+                                f"🕒 분석 일시: {entry['analysis_time']}"
+                            )
 
 # -----------------------------
 # 도감 초기화
@@ -179,7 +135,9 @@ else:
 st.divider()
 
 with st.expander("⚙️ 도감 관리"):
-    st.write("현재 세션에 등록된 도감 내용을 모두 지울 수 있어요.")
+    st.write(
+        "현재 세션에 등록된 도감 내용을 모두 지울 수 있어요."
+    )
 
     confirm_delete = st.checkbox(
         "등록된 모든 구름을 삭제하는 것에 동의합니다.",
