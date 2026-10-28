@@ -33,11 +33,6 @@ pages = [
         "pages/race.py",
         title="물방울 레이스",
         icon="💧"
-    ),
-    st.Page(
-        "pages/quiz.py",
-        title="구름 종류 맞히기 퀴즈",
-        icon="🧠"
     )
 ]
 
