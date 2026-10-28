@@ -3,41 +3,59 @@ import streamlit as st
 from google import genai
 from PIL import Image
 from datetime import datetime
+from io import BytesIO
 import json
 import re
 
+
 st.title("🔎 구름 분석 결과")
 
-# 기록 목록 초기화
+
+# -----------------------------
+# 저장 목록 초기화
+# -----------------------------
 if "cloud_history" not in st.session_state:
     st.session_state["cloud_history"] = []
 
-# 이전 분석 결과 불러오기
 if "cloud_analysis_result" not in st.session_state:
     st.session_state["cloud_analysis_result"] = None
 
+if "cloud_guide_entries" not in st.session_state:
+    st.session_state["cloud_guide_entries"] = []
+
+
+# -----------------------------
+# 업로드한 사진 불러오기
+# -----------------------------
 uploaded_file = st.session_state.get("uploaded_image")
 
 if uploaded_file is None:
     st.warning("먼저 '하늘 사진 업로드' 화면에서 사진을 올려 주세요.")
     st.stop()
 
+
+# 사진을 바이트로 보관
+photo_bytes = uploaded_file.getvalue()
+
 st.image(
-    uploaded_file,
+    photo_bytes,
     caption="분석할 하늘 사진",
     use_container_width=True
 )
 
 st.write("사진 속 구름의 종류와 특징을 AI가 분석합니다.")
 
+
+# -----------------------------
+# 구름 분석 시작
+# -----------------------------
 if st.button("🔍 구름 분석 시작", type="primary"):
 
     try:
         api_key = st.secrets["GEMINI_API_KEY"]
         client = genai.Client(api_key=api_key)
 
-        uploaded_file.seek(0)
-        image = Image.open(uploaded_file).convert("RGB")
+        image = Image.open(BytesIO(photo_bytes)).convert("RGB")
 
         prompt = """
         너는 기상 관측을 돕는 AI야.
@@ -84,45 +102,94 @@ if st.button("🔍 구름 분석 시작", type="primary"):
 
         answer = response.text.strip()
 
-        # AI가 JSON 앞뒤에 설명을 붙인 경우에도 JSON 추출 시도
+        # JSON 앞뒤에 붙은 마크다운 제거
         answer = re.sub(r"^```(?:json)?\s*", "", answer)
         answer = re.sub(r"\s*```$", "", answer)
 
         match = re.search(r"\{.*\}", answer, re.DOTALL)
 
         if not match:
-            raise ValueError("AI 응답에서 분석 결과를 읽지 못했습니다.")
+            raise ValueError(
+                "AI 응답에서 분석 결과를 읽지 못했습니다."
+            )
 
         result = json.loads(match.group())
 
-        # 새 항목이 누락된 경우를 위한 기본값
+        # 누락된 항목에 기본값 설정
+        result.setdefault("cloud_type", "알 수 없음")
+        result.setdefault("english_name", "")
+        result.setdefault("confidence", 0)
+        result.setdefault("features", "정보 없음")
         result.setdefault("formation_cause", "정보 없음")
         result.setdefault("altitude", "정보 없음")
+        result.setdefault("weather", "정보 없음")
+        result.setdefault("explanation", "정보 없음")
 
-        # 분석 결과를 세션에 저장
+        # 분석 시간
+        analysis_time = datetime.now().strftime(
+            "%Y-%m-%d %H:%M:%S"
+        )
+
+        cloud_name = str(result["cloud_type"])
+
+        # -----------------------------
+        # 1. 최신 분석 결과 저장
+        # -----------------------------
         st.session_state["cloud_analysis_result"] = result
 
-        # 관측 기록표에 자동 추가
+        # -----------------------------
+        # 2. 관측 기록에 사진과 분석 내용 저장
+        # -----------------------------
         record = {
-            "관측 일시": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "구름 종류": str(result.get("cloud_type", "알 수 없음")),
-            "영어 이름": str(result.get("english_name", "")),
-            "신뢰도(%)": result.get("confidence", 0),
-            "구름 특징": str(result.get("features", "")),
-            "생성 원인": str(result.get("formation_cause", "정보 없음")),
-            "주요 고도": str(result.get("altitude", "정보 없음")),
-            "관련 날씨": str(result.get("weather", "")),
-            "판단 이유": str(result.get("explanation", ""))
+            "관측 일시": analysis_time,
+            "구름 종류": cloud_name,
+            "영어 이름": str(result["english_name"]),
+            "신뢰도(%)": result["confidence"],
+            "구름 특징": str(result["features"]),
+            "생성 원인": str(result["formation_cause"]),
+            "주요 고도": str(result["altitude"]),
+            "관련 날씨": str(result["weather"]),
+            "판단 이유": str(result["explanation"]),
+            "사진": photo_bytes,
+            "사진 파일명": uploaded_file.name
         }
 
         st.session_state["cloud_history"].append(record)
 
-        st.success("분석 결과가 저장되어 관측 기록표에 추가되었습니다!")
+        # -----------------------------
+        # 3. 나만의 구름 도감에도 자동 등록
+        # -----------------------------
+        guide_entry = {
+            "name": cloud_name,
+            "date": datetime.now().strftime("%Y-%m-%d"),
+            "feature": str(result["features"]),
+            "image": photo_bytes,
+            "filename": uploaded_file.name,
+            "english_name": str(result["english_name"]),
+            "confidence": result["confidence"],
+            "formation_cause": str(result["formation_cause"]),
+            "altitude": str(result["altitude"]),
+            "weather": str(result["weather"]),
+            "explanation": str(result["explanation"]),
+            "analysis_time": analysis_time
+        }
+
+        st.session_state["cloud_guide_entries"].append(
+            guide_entry
+        )
+
+        st.success(
+            "분석이 완료되었어요! "
+            "사진과 분석 내용이 관측 기록과 구름 도감에 자동 저장되었습니다."
+        )
 
     except Exception as e:
         st.error(f"분석 중 오류가 발생했습니다: {e}")
 
+
+# -----------------------------
 # 저장된 최신 분석 결과 표시
+# -----------------------------
 result = st.session_state.get("cloud_analysis_result")
 
 if result:
@@ -166,11 +233,9 @@ if result:
     st.subheader("🔎 구름의 특징")
     st.write(result.get("features", "정보 없음"))
 
-    # 추가 기능 1: 구름 생성 원인
     st.subheader("🌱 구름의 생성 원인")
     st.write(result.get("formation_cause", "정보 없음"))
 
-    # 추가 기능 2: 주로 나타나는 고도
     st.subheader("📏 주로 나타나는 고도")
     st.write(result.get("altitude", "정보 없음"))
 
