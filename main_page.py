@@ -1,6 +1,8 @@
 
 import streamlit as st
+import random
 
+# 메인 화면 제목
 st.title("☁️ 하늘 사진으로 구름 종류 알아보기")
 
 st.write(
@@ -10,21 +12,19 @@ st.write(
 
 st.divider()
 
+# 하늘 사진 업로드
 st.subheader("📸 하늘 사진 업로드")
-
-# 업로더 초기화에 사용할 번호
-if "uploader_version" not in st.session_state:
-    st.session_state["uploader_version"] = 0
 
 uploaded_file = st.file_uploader(
     "분석할 하늘 사진을 선택하세요.",
-    type=["jpg", "jpeg", "png"],
-    key=f"cloud_image_uploader_{st.session_state['uploader_version']}"
+    type=["jpg", "jpeg", "png"]
 )
 
+# 업로드한 사진 저장 및 표시
 if uploaded_file is not None:
-
     st.session_state["uploaded_image"] = uploaded_file
+
+    st.success("사진이 성공적으로 업로드되었습니다!")
 
     st.image(
         uploaded_file,
@@ -32,50 +32,88 @@ if uploaded_file is not None:
         use_container_width=True
     )
 
-    st.success("사진이 업로드되었습니다!")
-
-    if st.button("🗑️ 사진 초기화"):
-
-        st.session_state.pop("uploaded_image", None)
-
-        # 이전 분석 결과도 초기화
-        st.session_state.pop("cloud_analysis_result", None)
-        st.session_state.pop("cloud_analysis", None)
-        st.session_state.pop("analysis_result", None)
-
-        # 업로더를 새로 만들어 선택한 사진 지우기
-        st.session_state["uploader_version"] += 1
-
-        st.rerun()
-
-    st.info(
-        "왼쪽 메뉴에서 '구름 분석 결과'를 선택하세요."
+    st.write(
+        "왼쪽 메뉴에서 '구름 분석 결과'를 선택한 후 "
+        "구름 분석을 시작하세요."
     )
 
 else:
+    st.info("분석할 하늘 사진을 업로드해 주세요.")
 
-    st.session_state.pop("uploaded_image", None)
-
-    st.info("먼저 하늘 사진을 업로드해주세요.")
+# 기상 명언 목록
+weather_quotes = [
+    {
+        "quote": "하늘을 관찰하는 것은 자연의 변화를 읽는 첫걸음이다.",
+        "author": "기상 관측의 의미를 담은 문구"
+    },
+    {
+        "quote": "날씨를 이해하는 것은 지구의 이야기를 읽는 것이다.",
+        "author": "기상 과학의 의미를 담은 문구"
+    },
+    {
+        "quote": "작은 구름의 변화도 날씨를 알려주는 단서가 된다.",
+        "author": "기상 관측의 의미를 담은 문구"
+    },
+    {
+        "quote": "하늘은 매일 새로운 모습으로 우리에게 신호를 보낸다.",
+        "author": "자연 관찰의 의미를 담은 문구"
+    },
+    {
+        "quote": "정확한 예보는 세심한 관찰에서 시작된다.",
+        "author": "기상 예보의 의미를 담은 문구"
+    },
+    {
+        "quote": "구름은 대기의 움직임을 보여주는 자연의 기록이다.",
+        "author": "기상 과학의 의미를 담은 문구"
+    },
+    {
+        "quote": "자연의 변화를 이해하면 미래의 날씨를 예측할 수 있다.",
+        "author": "기상 예측의 의미를 담은 문구"
+    },
+    {
+        "quote": "하늘을 읽는 눈이 날씨를 이해하는 힘이 된다.",
+        "author": "기상 관측의 의미를 담은 문구"
+    },
+    {
+        "quote": "오늘의 하늘을 관찰하면 내일의 날씨를 생각할 수 있다.",
+        "author": "기상 관측의 의미를 담은 문구"
+    },
+    {
+        "quote": "날씨는 끊임없이 변하고, 관측은 그 변화를 기록한다.",
+        "author": "기상 과학의 의미를 담은 문구"
+    }
+]
 
 st.divider()
 
-st.markdown(
-    """
-    ### 🔎 프로그램 이용 방법
+# 오늘의 기상 명언
+st.subheader("☁️ 오늘의 기상 한마디")
 
-    **① 하늘 사진 업로드**
+# 처음 접속했을 때 명언 무작위 선택
+if "weather_quote" not in st.session_state:
+    st.session_state["weather_quote"] = random.choice(
+        weather_quotes
+    )
 
-    ↓
+# 선택된 명언 출력
+quote = st.session_state["weather_quote"]
 
-    **② 왼쪽 메뉴에서 '구름 분석 결과' 선택**
-
-    ↓
-
-    **③ 생성형 AI가 구름 종류 분석**
-
-    ↓
-
-    **④ 구름의 특징과 날씨 정보 확인**
-    """
+st.info(
+    f"💬 \"{quote['quote']}\"\n\n"
+    f"— {quote['author']}"
 )
+
+# 다른 명언 보기
+if st.button("🔄 다른 명언 보기"):
+    current_quote = st.session_state["weather_quote"]
+
+    other_quotes = [
+        q for q in weather_quotes
+        if q != current_quote
+    ]
+
+    st.session_state["weather_quote"] = random.choice(
+        other_quotes
+    )
+
+    st.rerun()
