@@ -56,11 +56,6 @@ pages = [
         icon="💧"
     ),
 
-    st.Page(
-        "pages/weather_terms.py",
-        title="기상학 용어 사전",
-        icon="🌡️"
-    )
 ]
 
 # 페이지 이동 기능 실행
