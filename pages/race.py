@@ -515,7 +515,7 @@ function tick() {
         }
 
         // AI 물방울은 일정한 기본 속도로 이동
-        let speed = 1.45;
+        let speed = 1.6;
 
         // 날씨에 따른 속도 변화는 유지
         if (selectedWeather === "rainy") speed *= 0.93;
