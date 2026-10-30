@@ -324,7 +324,7 @@ button:disabled { opacity: .45; cursor: not-allowed; }
         <p>2. 레이스 시작 후 전진 버튼을 반복해서 누르세요.</p>
         <p>3. 또는 스페이스바를 눌러 물방울을 움직이세요.</p>
         <p class="small">
-            난이도: 보통보다 약간 어려움 · AI 물방울은 가끔 순간 가속합니다.
+            난이도: 보통 · AI 물방울은 일정한 속도로 이동합니다.
             스페이스바가 반응하지 않으면 게임 화면을 클릭한 뒤 눌러 보세요.
         </p>
     </div>
@@ -514,40 +514,13 @@ function tick() {
             continue;
         }
 
-        // AI의 기본 속도를 이전보다 낮춤
-        let speed = 1.1 + Math.random() * 0.7;
+        // AI 물방울은 일정한 기본 속도로 이동
+        let speed = 1.45;
 
-        // 캐릭터별 순간 가속: 빈도와 세기를 완화
-        if (i === 0 && Math.random() < 0.12) {
-            speed += 1.2;
-            showEvent("⚡ 번개 물방울이 순간 가속합니다!");
-        }
-
-        if (i === 1 && Math.random() < 0.11) {
-            speed += 1.1;
-            showEvent("🌈 무지개 물방울이 보너스 길을 발견했어요!");
-        }
-
-        if (i === 2 && Math.random() < 0.08) {
-            speed += 1.0;
-            showEvent("❄️ 얼음 물방울이 치고 나갑니다!");
-        }
-
-        if (i === 3 && Math.random() < 0.12) {
-            speed += 1.1;
-            showEvent("☁️ 구름 물방울에게 행운의 바람이 불어요!");
-        }
-
-        // 날씨에 따른 속도 변화
+        // 날씨에 따른 속도 변화는 유지
         if (selectedWeather === "rainy") speed *= 0.93;
         if (selectedWeather === "snowy") speed *= 0.86;
         if (selectedWeather === "stormy") speed *= 0.96;
-
-        // 가끔 발생하는 작은 돌발 상황
-        if (Math.random() < 0.02) {
-            speed = Math.max(0.6, speed - 0.8);
-            showEvent("🌧️ 갑작스러운 바람으로 속도가 줄었어요!");
-        }
 
         positions[i] = Math.min(100, positions[i] + speed);
 
